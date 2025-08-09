@@ -1,0 +1,22 @@
+{
+  "manifest_version": 1,
+  "name": "LeetCode Hotkey: Reset",
+  "version": "1.0.0",
+  "description": "Adds a single hotkey on LeetCode problem pages: Cmd+\\ to Reset (macOS only).",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://leetcode.com/*",
+        "https://*.leetcode.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "host_permissions": [
+    "https://leetcode.com/*",
+    "https://*.leetcode.com/*"
+  ]
+}
+
+
