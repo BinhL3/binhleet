@@ -1,5 +1,15 @@
 (() => {
   const mac = navigator.platform.toUpperCase().includes('MAC');
+  const TOAST_DURATION_MS = 2500; 
+  const SPINNER_DURATION_MS = 700;
+
+  function ensureToastStyles() {
+    if (document.getElementById('lc-hotkey-toast-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'lc-hotkey-toast-styles';
+    style.textContent = `@keyframes lcSpin { to { transform: rotate(360deg); } }`;
+    document.documentElement.appendChild(style);
+  }
 
   function isInEditor() {
     return Boolean(
@@ -68,26 +78,97 @@
     });
   }
 
-  function showToast(text) {
+  function showToast(text, durationMs = TOAST_DURATION_MS) {
     try {
+      ensureToastStyles();
+      const sample = document.querySelector('.bg-green-s, .text-green-s, button.bg-green-s');
+      const cs = sample ? getComputedStyle(sample) : null;
+
+      const bg = cs && cs.backgroundColor && cs.backgroundColor !== 'rgba(0, 0, 0, 0)'
+        ? cs.backgroundColor
+        : '#00b8a3';
+      const fg = cs && cs.color ? cs.color : '#ffffff';
+      const radius = cs && cs.borderRadius && cs.borderRadius !== '0px' ? cs.borderRadius : '10px';
+      const font = cs && cs.font ? cs.font : '13px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial';
+
+      const existing = document.getElementById('lc-hotkey-reset-toast');
+      if (existing) existing.remove();
+
       const toast = document.createElement('div');
-      toast.textContent = text;
+      toast.id = 'lc-hotkey-reset-toast';
       toast.style.position = 'fixed';
       toast.style.right = '16px';
       toast.style.bottom = '16px';
       toast.style.zIndex = '2147483647';
-      toast.style.background = 'rgba(32,33,36,0.95)';
-      toast.style.color = 'white';
-      toast.style.padding = '8px 10px';
-      toast.style.borderRadius = '6px';
-      toast.style.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial';
-      toast.style.boxShadow = '0 2px 12px rgba(0,0,0,0.3)';
+      toast.style.display = 'inline-flex';
+      toast.style.alignItems = 'center';
+      toast.style.gap = '8px';
+      toast.style.padding = '8px 12px';
+      toast.style.background = bg;
+      toast.style.color = fg;
+      toast.style.borderRadius = radius;
+      toast.style.font = font;
+      toast.style.boxShadow = '0 6px 20px rgba(0,0,0,0.25)';
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(6px)';
+      toast.style.transition = 'opacity 160ms ease, transform 160ms ease';
+
+      const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      icon.setAttribute('viewBox', '0 0 24 24');
+      icon.setAttribute('width', '16');
+      icon.setAttribute('height', '16');
+      icon.setAttribute('fill', 'currentColor');
+
+      const spinnerGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      spinnerGroup.setAttribute('id', 'lc-spinner');
+      spinnerGroup.setAttribute('style', 'transform-origin: 12px 12px; animation: lcSpin 800ms linear infinite;');
+      const spinnerCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      spinnerCircle.setAttribute('cx', '12');
+      spinnerCircle.setAttribute('cy', '12');
+      spinnerCircle.setAttribute('r', '9');
+      spinnerCircle.setAttribute('fill', 'none');
+      spinnerCircle.setAttribute('stroke', 'currentColor');
+      spinnerCircle.setAttribute('stroke-width', '2');
+      spinnerCircle.setAttribute('stroke-linecap', 'round');
+      spinnerCircle.setAttribute('stroke-dasharray', '56');
+      spinnerCircle.setAttribute('stroke-dashoffset', '42');
+      spinnerGroup.appendChild(spinnerCircle);
+
+      const checkGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      checkGroup.setAttribute('id', 'lc-check');
+      checkGroup.setAttribute('style', 'opacity:0; transform: scale(0.85); transform-origin: 12px 12px; transition: opacity 180ms ease, transform 180ms ease;');
+      const checkPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      checkPath.setAttribute('d', 'M9 16.2l-3.5-3.5L4 14.2 9 19l12-12-1.5-1.5z');
+      checkGroup.appendChild(checkPath);
+
+      icon.appendChild(spinnerGroup);
+      icon.appendChild(checkGroup);
+
+      const label = document.createElement('span');
+      label.textContent = text;
+      label.style.fontWeight = '600';
+
+      toast.appendChild(icon);
+      toast.appendChild(label);
       document.body.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+      });
+
+      // Transition spinner → check
       setTimeout(() => {
-        toast.style.transition = 'opacity 200ms ease';
+        spinnerGroup.style.display = 'none';
+        checkGroup.style.opacity = '1';
+        checkGroup.style.transform = 'scale(1)';
+      }, Math.min(600, Math.max(250, SPINNER_DURATION_MS)));
+
+      setTimeout(() => {
         toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 220);
-      }, 800);
+        toast.style.transform = 'translateY(6px)';
+        setTimeout(() => toast.remove(), 200);
+      }, durationMs);
     } catch (_) {}
   }
 
