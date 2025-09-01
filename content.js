@@ -78,6 +78,80 @@
     });
   }
 
+  function triggerSave() {
+    // Create and dispatch a Cmd+S keydown event
+    const saveEvent = new KeyboardEvent('keydown', {
+      key: 's',
+      code: 'KeyS',
+      metaKey: true,
+      ctrlKey: false,
+      bubbles: true,
+      cancelable: true
+    });
+    
+    // Dispatch the event on the active element or document
+    const activeElement = document.activeElement;
+    if (activeElement && activeElement !== document.body) {
+      activeElement.dispatchEvent(saveEvent);
+    } else {
+      document.dispatchEvent(saveEvent);
+    }
+  }
+
+  function detectSaveOperation() {
+    // Monitor for save-related UI changes or network requests
+    let saveDetected = false;
+    
+    // Method 1: Monitor for save button clicks
+    document.addEventListener('click', (event) => {
+      const target = event.target;
+      if (target && target.tagName === 'BUTTON') {
+        const buttonText = target.textContent?.toLowerCase() || '';
+        const ariaLabel = target.getAttribute('aria-label')?.toLowerCase() || '';
+        
+        if (buttonText.includes('save') || ariaLabel.includes('save') || 
+            buttonText.includes('submit') || ariaLabel.includes('submit')) {
+          saveDetected = true;
+          setTimeout(() => {
+            if (saveDetected) {
+              triggerSave();
+              saveDetected = false;
+            }
+          }, 100);
+        }
+      }
+    });
+
+    // Method 2: Monitor for Cmd+S keydown events to detect manual saves
+    document.addEventListener('keydown', (event) => {
+      if (event.metaKey && event.key === 's') {
+        saveDetected = true;
+        setTimeout(() => {
+          if (saveDetected) {
+            triggerSave();
+            saveDetected = false;
+          }
+        }, 100);
+      }
+    });
+
+    // Method 3: Monitor for network requests that might indicate saves
+    const originalFetch = window.fetch;
+    window.fetch = function(...args) {
+      const url = args[0];
+      if (typeof url === 'string' && (url.includes('submit') || url.includes('save'))) {
+        saveDetected = true;
+        setTimeout(() => {
+          if (saveDetected) {
+            triggerSave();
+            saveDetected = false;
+          }
+        }, 200);
+      }
+      return originalFetch.apply(this, args);
+    };
+  }
+
   function showToast(text, durationMs = TOAST_DURATION_MS) {
     try {
       ensureToastStyles();
@@ -203,6 +277,7 @@
       const observer = new MutationObserver(() => {
         if (isInEditor()) {
           window.addEventListener('keydown', handleHotkeys, true);
+          detectSaveOperation();
           observer.disconnect();
         }
       });
@@ -211,6 +286,7 @@
     }
 
     window.addEventListener('keydown', handleHotkeys, true);
+    detectSaveOperation();
   }
 
   (function hookHistory() {
